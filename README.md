@@ -1,15 +1,17 @@
 # nlp-link
-A python package to semantically link two lists of texts.
 
+A python package to semantically link two lists of texts.
 
 ## Set-up
 
 In setting up this project we ran:
+
 ```
 conda create --name nlp-link pip python=3.9
 conda activate nlp-link
 pip install poetry
-pip install pre-commit
+pip install pre-commit black
+pre-commit install
 ```
 
 ```
@@ -38,6 +40,6 @@ However, if you are editing the docs you can test them out locally by running
 
 ```
 cd guidelines
-pip install -r docs/requirements.txt  
+pip install -r docs/requirements.txt
 mkdocs serve
 ```
