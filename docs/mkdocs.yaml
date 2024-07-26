@@ -1,0 +1,44 @@
+site_name: NLP Link
+site_description: A python package to semantically link two lists of texts..
+site_url: https://nestauk.github.io/nlp-link
+repo_name: nestauk/nlp-link
+repo_url: https://github.com/nestauk/nlp-link
+extra:
+  homepage: https://nestauk.github.io/nlp-link
+docs_dir: .
+extra_css:
+  - site_assets/style.css
+theme:
+  name: material
+  # disable_nav_previous_next: true
+  # disable_footer: false
+  logo: site_assets/nesta_logo.png
+  favicon: site_assets/nesta_logo.png
+  features:
+    - navigation.instant
+    - navigation.tracking
+    # - navigation.tabs
+    - navigation.sections
+    - navigation.top
+  font:
+    text: Century Gothic
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: amber
+      accent: pink
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+nav:
+  - Home: README.md
+  - Page 1: page1.md
+plugins:
+  - same-dir
