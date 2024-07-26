@@ -34,7 +34,7 @@ poetry run pytest tests/
 
 ## Documentation
 
-Docs for this repo are automatically published to gh-pages branch via. Github actions after a PR is merged into dev. We use Material for MkDocs for these. Nothing needs to be done to update these.
+Docs for this repo are automatically published to gh-pages branch via. Github actions after a PR is merged into main. We use Material for MkDocs for these. Nothing needs to be done to update these.
 
 However, if you are editing the docs you can test them out locally by running
 
