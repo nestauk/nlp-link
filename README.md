@@ -9,6 +9,7 @@ In setting up this project we ran:
 conda create --name nlp-link pip python=3.9
 conda activate nlp-link
 pip install poetry
+pip install pre-commit
 ```
 
 ```

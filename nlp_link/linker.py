@@ -1,5 +1,4 @@
 import pandas as pd
-
 import random
 
 def link_lists(list_1, list_2):
