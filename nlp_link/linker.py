@@ -34,7 +34,7 @@ import pandas as pd
 from typing import Union, Optional
 import logging
 
-from nlp_link.utils import chunk_list
+from nlp_link.linker_utils import chunk_list
 
 logger = logging.getLogger(__name__)
 
