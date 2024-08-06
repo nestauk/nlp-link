@@ -4,17 +4,17 @@ version = "0.1.0"
 description = "A python package to semantically link two lists of texts."
 authors = ["Nesta <dataanalytics@nesta.org.uk>"]
 readme = "README.md"
-packages = [{include = "nlp_link"}]
+packages = [{include = "nlp_link", "soc_mapper"}]
 
 [tool.poetry.dependencies]
 python = "^3.9"
-scikit-learn = "^1.4.2"
+scikit-learn = "^1.5.1"
 pandas = "^2.2.2"
-sentence-transformers = "^2.1.0"
-torch = "^1.10.0"
-pytest = "^8.2.0"
-tqdm = "^4.64.1"
-numpy = "^1.24.1"
+sentence-transformers = "^2.7.0"
+torch = "^1.13.1"
+pytest = "^8.3.2"
+tqdm = "^4.66.4"
+numpy = "^1.26.4"
 
 [build-system]
 requires = ["poetry-core"]
