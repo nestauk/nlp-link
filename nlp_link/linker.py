@@ -26,6 +26,7 @@ print(matches)
 """
 
 from sentence_transformers import SentenceTransformer
+import torch
 from tqdm import tqdm
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
@@ -100,7 +101,10 @@ class NLPLinker(object):
                 If a list is given then a unique id will be assigned with the index order.
         """
         logger.info("Loading model")
-        self.bert_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+        device = torch.device(f"cuda:0" if torch.cuda.is_available() else "cpu")
+        self.bert_model = SentenceTransformer(
+            "sentence-transformers/all-MiniLM-L6-v2", device=device
+        )
         self.bert_model.max_seq_length = 512
 
         self.comparison_data = self._process_dataset(comparison_data)
