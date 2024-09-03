@@ -2,6 +2,11 @@ from nlp_link.linker import NLPLinker
 
 import numpy as np
 
+# Needed for Github Actions to not fail (see torch bug https://github.com/pytorch/pytorch/issues/121101)
+import torch
+
+torch.set_num_threads(1)
+
 
 def test_NLPLinker_dict_input():
 
