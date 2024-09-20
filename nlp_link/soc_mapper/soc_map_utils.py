@@ -24,7 +24,13 @@ def load_job_title_soc() -> pd.DataFrame():
 
 
 def process_job_title_soc(jobtitle_soc_data: pd.DataFrame()) -> pd.DataFrame():
-    # Standardise the column names for use in soc_map.py
+    """Standardise the column names for use in soc_map.py
+    Args:
+        jobtitle_soc_data (pd.DataFrame): the raw ONS SOC coding index dataset
+    Returns:
+        pd.DataFrame: the cleaned ONS SOC coding index dataset
+    """
+
     jobtitle_soc_data = jobtitle_soc_data.rename(
         columns={
             soc_mapper_config["soc_data"]["soc_2020_ext_col"]: "SOC_2020_EXT",
@@ -44,6 +50,111 @@ def process_job_title_soc(jobtitle_soc_data: pd.DataFrame()) -> pd.DataFrame():
     jobtitle_soc_data = jobtitle_soc_data[jobtitle_soc_data["SOC_2020"] != "}}}}"]
 
     return jobtitle_soc_data
+
+
+def unique_soc_job_titles(jobtitle_soc_data: pd.DataFrame()) -> dict:
+    """
+    Taking the dataset of job titles and which SOC they belong to - create a unique
+    dictionary where each key is a job title and the value is the SOC code.
+    There are additional words to include in the job title if at first
+    it is not unique.
+
+    Args:
+        jobtitle_soc_data (pd.DataFrame): the cleaned ONS SOC coding index dataset.
+
+    Returns:
+        dict: A dictionary where each key is a job title and the value is the SOC code.
+
+    """
+
+    col_name_0 = "INDEXOCC NATURAL WORD ORDER"
+    col_name_1 = "ADD"
+    col_name_2 = "IND"
+
+    jobtitle_soc_data[f"{col_name_0} and {col_name_1}"] = jobtitle_soc_data.apply(
+        lambda x: (
+            x[col_name_0] + " " + x[col_name_1]
+            if pd.notnull(x[col_name_1])
+            else x[col_name_0]
+        ),
+        axis=1,
+    )
+    jobtitle_soc_data[f"{col_name_0} and {col_name_1} and {col_name_2}"] = (
+        jobtitle_soc_data.apply(
+            lambda x: (
+                x[f"{col_name_0} and {col_name_1}"] + " " + x[col_name_2]
+                if pd.notnull(x[col_name_2])
+                else x[f"{col_name_0} and {col_name_1}"]
+            ),
+            axis=1,
+        )
+    )
+
+    # Try to find a unique job title to SOC 2020 4 or 6 code mapping
+    job_title_2_soc6_4 = {}
+    for job_title, grouped_soc_data in jobtitle_soc_data.groupby(col_name_0):
+        if grouped_soc_data["SOC_2020_EXT"].nunique() == 1:
+            job_title_2_soc6_4[job_title] = (
+                grouped_soc_data["SOC_2020_EXT"].unique()[0],
+                grouped_soc_data["SOC_2020"].unique()[0],
+                grouped_soc_data["SOC_2010"].unique()[0],
+            )
+        else:
+            for job_title_1, grouped_soc_data_1 in grouped_soc_data.groupby(
+                f"{col_name_0} and {col_name_1}"
+            ):
+                if grouped_soc_data_1["SOC_2020_EXT"].nunique() == 1:
+                    job_title_2_soc6_4[job_title_1] = (
+                        grouped_soc_data_1["SOC_2020_EXT"].unique()[0],
+                        grouped_soc_data_1["SOC_2020"].unique()[0],
+                        grouped_soc_data_1["SOC_2010"].unique()[0],
+                    )
+                else:
+                    for (
+                        job_title_2,
+                        grouped_soc_data_2,
+                    ) in grouped_soc_data_1.groupby(
+                        f"{col_name_0} and {col_name_1} and {col_name_2}"
+                    ):
+                        if grouped_soc_data_2["SOC_2020_EXT"].nunique() == 1:
+                            job_title_2_soc6_4[job_title_2] = (
+                                grouped_soc_data_2["SOC_2020_EXT"].unique()[0],
+                                grouped_soc_data_2["SOC_2020"].unique()[0],
+                                grouped_soc_data_2["SOC_2010"].unique()[0],
+                            )
+
+    return job_title_2_soc6_4
+
+
+def unique_soc_descriptions(soc_data: pd.DataFrame()) -> dict:
+    """
+    Taking the dataset of SOC and their descriptions - create a unique
+    dictionary where each key is a description and the value is the SOC code.
+
+    Args:
+        soc_data (pd.DataFrame): the cleaned ONS SOC coding index dataset.
+
+    Returns:
+        dict: A dictionary where each key is a SOC description and the value is the SOC code.
+
+    """
+    soc_data["SUB-UNIT GROUP DESCRIPTIONS"] = soc_data[
+        "SUB-UNIT GROUP DESCRIPTIONS"
+    ].apply(lambda x: x.replace(" n.e.c.", "").replace(" n.e.c", ""))
+
+    dd = soc_data[
+        ["SUB-UNIT GROUP DESCRIPTIONS", "SOC_2020_EXT", "SOC_2020", "SOC_2010"]
+    ].drop_duplicates()
+
+    # There can be multiple 2010 codes for each 6 digit, so just output the most common
+    soc_desc_2_code = {}
+    for description, soc_info in dd.groupby("SUB-UNIT GROUP DESCRIPTIONS"):
+        soc_2020_6 = soc_info["SOC_2020_EXT"].value_counts().index[0]
+        soc_2020_4 = soc_info["SOC_2020"].value_counts().index[0]
+        soc_2010 = list(soc_info["SOC_2010"].unique())
+        soc_desc_2_code[description] = (soc_2020_6, soc_2020_4, soc_2010)
+
+    return soc_desc_2_code
 
 
 major_places = [
@@ -95,7 +206,9 @@ lower_case_all_end_words = [
 ]
 
 
-def job_title_cleaner(text, lower_case_all_end_words=lower_case_all_end_words):
+def job_title_cleaner(
+    text: str, lower_case_all_end_words: list = lower_case_all_end_words
+) -> str:
     """
     Will apply a bunch of cleaning to a job title
     - removing certain things (locations or work type after a "-")
@@ -113,6 +226,14 @@ def job_title_cleaner(text, lower_case_all_end_words=lower_case_all_end_words):
     'Retail Customer Service CSM 16hrs' -> 'Retail Customer Service CSM'
     'Bike Delivery Driver - London' -> 'Bike Delivery Driver'
     'Fulfillment Associate - &#163;1000 Sign on Bonus!' -> 'Fulfillment Associate'
+
+    Args:
+        text (str): the text of the job title you want to clean
+        lower_case_all_end_words (list): a list of all the words to clean out
+        if they are at the end of the job title.
+    Returns:
+        str: the cleaned job title
+
     """
     if text:
         text = str(text)

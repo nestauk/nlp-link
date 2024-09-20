@@ -27,6 +27,8 @@ from nlp_link.soc_mapper.soc_map_utils import (
     load_job_title_soc,
     process_job_title_soc,
     job_title_cleaner,
+    unique_soc_job_titles,
+    unique_soc_descriptions,
 )
 
 from nlp_link.linker_utils import chunk_list
@@ -35,43 +37,25 @@ from utils.utils import PROJECT_DIR, soc_mapper_config, logger
 import logging
 
 
-# from dap_prinz_green_jobs import BUCKET_NAME, logger, config, PROJECT_DIR
-
-
 class SOCMapper(object):
     """Class for linking job titles to SOC codes.
 
-        The input job title is matched to a dataset of job titles with their 2020 SOC.
-        - If the most similar job title is very similar, then the corresponding 6-digit SOC is outputted.
-        - Otherwise, we look at a group of the most similar job titles, and if they all have the same 4-digit SOC, then this is outputted.
+    The input job title is matched to a dataset of job titles with their 2020 SOC.
+    - If the most similar job title is very similar, then the corresponding 6-digit SOC is outputted.
+    - Otherwise, we look at a group of the most similar job titles, and if they all have the same 4-digit SOC, then this is outputted.
 
-        Attributes
     ----------
 
-    :param local: Whether to read data from a local location or not, defaults to True
-    :type local: bool
-
-    :param embeddings_output_dir: (optional) The directory the embeddings are stored, or will be stored if saved.
-    You are unlikely to need to change this from "outputs/data/green_occupations/soc_matching/" unless the SOC data changes
-    :type embeddings_output_dir: str, None
-
-    :param batch_size: How many job titles per batch for embedding, defaults to 500
-    :type batch_size: int
-
-    :param match_top_n: The number of most similar SOC matches to consider when calculating the final SOC and outputing
-    :type match_top_n: int
-
-    :param sim_threshold: The similarity threshold for outputting the most similar SOC match.
-    :type sim_threshold: float
-
-    :param top_n_sim_threshold: The similarity threshold for a match being added to a group of SOC matches.
-    :type top_n_sim_threshold: float
-
-    :param minimum_n: The minimum size of a group of SOC matches.
-    :type minimum_n: int
-
-    :param minimum_prop: If a group of SOC matches have a high proportion (>= minimum_prop) of the same SOC being matched, then use this SOC.
-    :type minimum_prop: float
+    Args:
+        local (bool): Whether to read data from a local location or not, defaults to True
+        embeddings_output_dir (str, optional): The directory the embeddings are stored, or will be stored if saved.
+            You are unlikely to need to change this from "outputs/data/green_occupations/soc_matching/" unless the SOC data changes
+        batch_size (int): How many job titles per batch for embedding, defaults to 500
+        match_top_n (int): The number of most similar SOC matches to consider when calculating the final SOC and outputing
+        sim_threshold (float): The similarity threshold for outputting the most similar SOC match.
+        top_n_sim_threshold (float): The similarity threshold for a match being added to a group of SOC matches.
+        minimum_n (int): The minimum size of a group of SOC matches.
+        minimum_prop (float): If a group of SOC matches have a high proportion (>= minimum_prop) of the same SOC being matched, then use this SOC.
 
     ----------
     Methods
@@ -79,20 +63,18 @@ class SOCMapper(object):
 
     load_process_soc_data():
         Load the SOC data
-    unique_soc_job_titles(jobtitle_soc_data):
-        Convert the SOC data into a dict where each key is a job title and the value is the SOC code
-        embed_texts(texts):
-                Get sentence embeddings for a list of input texts
-        load(save_embeds=False):
-                Load everything to use this class, calculate SOC embeddings if they weren't inputted, save embeddings if desired
-        find_most_similar_matches(job_titles, job_title_embeddings):
-                Using the inputted job title embeddings and the SOC embeddings, find the full information about the most similar SOC job titles
-        find_most_likely_soc(match_row):
-                For the full match information for one job title, find the most likely SOC (via top match, or group of top matches)
-        get_soc(job_titles, additional_info=False):
-                (main function) For inputted job titles, output the best SOC match, add extra information about matches using the additional_info argument
+    embed_texts(texts):
+            Get sentence embeddings for a list of input texts
+    load(save_embeds=False):
+            Load everything to use this class, calculate SOC embeddings if they weren't inputted, save embeddings if desired
+    find_most_similar_matches(job_titles, job_title_embeddings):
+            Using the inputted job title embeddings and the SOC embeddings, find the full information about the most similar SOC job titles
+    find_most_likely_soc(match_row):
+            For the full match information for one job title, find the most likely SOC (via top match, or group of top matches)
+    get_soc(job_titles, additional_info=False):
+            (main function) For inputted job titles, output the best SOC match, add extra information about matches using the additional_info argument
 
-        ----------
+    ----------
     Usage
     ----------
         from soc_mapper.soc_map import SOCMapper
@@ -136,95 +118,6 @@ class SOCMapper(object):
 
         return jobtitle_soc_data
 
-    def unique_soc_job_titles(self, jobtitle_soc_data: pd.DataFrame()) -> dict:
-        """
-        Taking the dataset of job titles and which SOC they belong to - create a unique
-        dictionary where each key is a job title and the value is the SOC code.
-        There are additional words to include in the job title if at first
-        it is not unique.
-        """
-
-        col_name_0 = "INDEXOCC NATURAL WORD ORDER"
-        col_name_1 = "ADD"
-        col_name_2 = "IND"
-
-        jobtitle_soc_data[f"{col_name_0} and {col_name_1}"] = jobtitle_soc_data.apply(
-            lambda x: (
-                x[col_name_0] + " " + x[col_name_1]
-                if pd.notnull(x[col_name_1])
-                else x[col_name_0]
-            ),
-            axis=1,
-        )
-        jobtitle_soc_data[f"{col_name_0} and {col_name_1} and {col_name_2}"] = (
-            jobtitle_soc_data.apply(
-                lambda x: (
-                    x[f"{col_name_0} and {col_name_1}"] + " " + x[col_name_2]
-                    if pd.notnull(x[col_name_2])
-                    else x[f"{col_name_0} and {col_name_1}"]
-                ),
-                axis=1,
-            )
-        )
-
-        # Try to find a unique job title to SOC 2020 4 or 6 code mapping
-        job_title_2_soc6_4 = {}
-        for job_title, grouped_soc_data in jobtitle_soc_data.groupby(col_name_0):
-            if grouped_soc_data["SOC_2020_EXT"].nunique() == 1:
-                job_title_2_soc6_4[job_title] = (
-                    grouped_soc_data["SOC_2020_EXT"].unique()[0],
-                    grouped_soc_data["SOC_2020"].unique()[0],
-                    grouped_soc_data["SOC_2010"].unique()[0],
-                )
-            else:
-                for job_title_1, grouped_soc_data_1 in grouped_soc_data.groupby(
-                    f"{col_name_0} and {col_name_1}"
-                ):
-                    if grouped_soc_data_1["SOC_2020_EXT"].nunique() == 1:
-                        job_title_2_soc6_4[job_title_1] = (
-                            grouped_soc_data_1["SOC_2020_EXT"].unique()[0],
-                            grouped_soc_data_1["SOC_2020"].unique()[0],
-                            grouped_soc_data_1["SOC_2010"].unique()[0],
-                        )
-                    else:
-                        for (
-                            job_title_2,
-                            grouped_soc_data_2,
-                        ) in grouped_soc_data_1.groupby(
-                            f"{col_name_0} and {col_name_1} and {col_name_2}"
-                        ):
-                            if grouped_soc_data_2["SOC_2020_EXT"].nunique() == 1:
-                                job_title_2_soc6_4[job_title_2] = (
-                                    grouped_soc_data_2["SOC_2020_EXT"].unique()[0],
-                                    grouped_soc_data_2["SOC_2020"].unique()[0],
-                                    grouped_soc_data_2["SOC_2010"].unique()[0],
-                                )
-
-        return job_title_2_soc6_4
-
-    def unique_soc_descriptions(self, soc_data: pd.DataFrame()) -> dict:
-        """
-        Taking the dataset of SOC and their descriptions - create a unique
-        dictionary where each key is a description and the value is the SOC code.
-        """
-        soc_data["SUB-UNIT GROUP DESCRIPTIONS"] = soc_data[
-            "SUB-UNIT GROUP DESCRIPTIONS"
-        ].apply(lambda x: x.replace(" n.e.c.", "").replace(" n.e.c", ""))
-
-        dd = soc_data[
-            ["SUB-UNIT GROUP DESCRIPTIONS", "SOC_2020_EXT", "SOC_2020", "SOC_2010"]
-        ].drop_duplicates()
-
-        # There can be multiple 2010 codes for each 6 digit, so just output the most common
-        soc_desc_2_code = {}
-        for description, soc_info in dd.groupby("SUB-UNIT GROUP DESCRIPTIONS"):
-            soc_2020_6 = soc_info["SOC_2020_EXT"].value_counts().index[0]
-            soc_2020_4 = soc_info["SOC_2020"].value_counts().index[0]
-            soc_2010 = list(soc_info["SOC_2010"].unique())
-            soc_desc_2_code[description] = (soc_2020_6, soc_2020_4, soc_2010)
-
-        return soc_desc_2_code
-
     def embed_texts(
         self,
         texts: list,
@@ -259,13 +152,11 @@ class SOCMapper(object):
         )
 
         if job_titles:
-            self.job_title_2_soc6_4 = self.unique_soc_job_titles(self.jobtitle_soc_data)
+            self.job_title_2_soc6_4 = unique_soc_job_titles(self.jobtitle_soc_data)
         else:
             # This is a bit of an appended use case - so I've called the variable the same
             # so it fits in with the rest of the pipeline
-            self.job_title_2_soc6_4 = self.unique_soc_descriptions(
-                self.jobtitle_soc_data
-            )
+            self.job_title_2_soc6_4 = unique_soc_descriptions(self.jobtitle_soc_data)
 
         embeddings_path = os.path.join(
             self.embeddings_output_dir, "soc_job_embeddings.json"
