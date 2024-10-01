@@ -25,19 +25,18 @@ print(matches)
 
 """
 
-from sentence_transformers import SentenceTransformer
-import torch
 from tqdm import tqdm
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 import pandas as pd
 
 from typing import Union, Optional
-import logging
 
-from nlp_link.linker_utils import chunk_list
+from nlp_link.linker_utils import chunk_list, get_embeddings, load_bert
 
-logger = logging.getLogger(__name__)
+from wasabi import msg, Printer
+
+msg_print = Printer()
 
 # TO DO: cosine or euclidean?
 
@@ -76,16 +75,16 @@ class NLPLinker(object):
             try:
                 return dict(zip(input_data[id_column], input_data[text_column]))
             except:
-                logger.warning(
+                msg.warn(
                     "Input is a dataframe, please specify id_column and text_column"
                 )
         else:
-            logger.warning(
+            msg.warn(
                 "The input_data input must be a dictionary, a list or pandas dataframe"
             )
 
         if not isinstance(input_data[0], str):
-            logger.warning(
+            msg.warn(
                 "The input_data input must be a list of texts, or a dictionary where the values are texts"
             )
 
@@ -100,12 +99,7 @@ class NLPLinker(object):
                 A list of texts or a dictionary of texts where the key is the unique id.
                 If a list is given then a unique id will be assigned with the index order.
         """
-        logger.info("Loading model")
-        device = torch.device(f"cuda:0" if torch.cuda.is_available() else "cpu")
-        self.bert_model = SentenceTransformer(
-            "sentence-transformers/all-MiniLM-L6-v2", device=device
-        )
-        self.bert_model.max_seq_length = 512
+        self.bert_model = load_bert()
 
         self.comparison_data = self._process_dataset(comparison_data)
         self.comparison_data_texts = list(self.comparison_data.values())
@@ -123,19 +117,12 @@ class NLPLinker(object):
             np.array: The embeddings for the input list of texts
         """
 
-        logger.info(
-            f"Finding embeddings for {len(text_list)} texts chunked into {round(len(text_list)/self.embed_chunk_size)} chunks"
+        return get_embeddings(
+            text_list=text_list,
+            embed_chunk_size=self.embed_chunk_size,
+            batch_size=self.batch_size,
+            bert_model=self.bert_model,
         )
-        all_embeddings = []
-        for batch_texts in tqdm(chunk_list(text_list, self.embed_chunk_size)):
-            all_embeddings.append(
-                self.bert_model.encode(
-                    np.array(batch_texts), batch_size=self.batch_size
-                )
-            )
-        all_embeddings = np.concatenate(all_embeddings)
-
-        return all_embeddings
 
     def get_matches(
         self,
@@ -161,7 +148,7 @@ class NLPLinker(object):
             dict: The top matches for each input id.
         """
 
-        logger.info(
+        msg.info(
             f"Finding the top dataset matches for {len(input_data_ids)} input texts chunked into {round(len(input_data_ids)/self.match_chunk_size)}"
         )
 
@@ -222,11 +209,11 @@ class NLPLinker(object):
         """
 
         try:
-            logger.info(
+            msg.info(
                 f"Comparing {len(input_data)} input texts to {len(self.comparison_embeddings)} comparison texts"
             )
         except:
-            logger.warning(
+            msg.warning(
                 "self.comparison_embeddings does not exist - you may have not run load()"
             )
 
