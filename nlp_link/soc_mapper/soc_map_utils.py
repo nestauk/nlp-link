@@ -5,7 +5,7 @@ import re
 from utils.utils import soc_mapper_config
 
 
-def load_job_title_soc() -> pd.DataFrame():
+def load_job_title_soc(soc_mapper_config: dict = soc_mapper_config) -> pd.DataFrame():
     """
     Load the ONS dataset which gives SOC codes for thousands of job titles
     """
@@ -23,7 +23,9 @@ def load_job_title_soc() -> pd.DataFrame():
     return jobtitle_soc_data
 
 
-def process_job_title_soc(jobtitle_soc_data: pd.DataFrame()) -> pd.DataFrame():
+def process_job_title_soc(
+    jobtitle_soc_data: pd.DataFrame(), soc_mapper_config: dict = soc_mapper_config
+) -> pd.DataFrame():
     """Standardise the column names for use in soc_map.py
     Args:
         jobtitle_soc_data (pd.DataFrame): the raw ONS SOC coding index dataset

@@ -24,6 +24,30 @@ job_titles=["data scientist", "Assistant nurse", "Senior financial consultant - 
 soc_mapper.get_soc(job_titles, return_soc_name=True)
 ```
 
+### Modifications
+
+If you want to match job titles to a different, locally saved, version of a SOC coding index file, you can do this with:
+
+```
+from nlp_link.soc_mapper.soc_map import SOCMapper
+
+soc_mapper = SOCMapper(soc_dir = LOCAL_DIR_OF_SOC_CODING_INDEX)
+soc_mapper.load(save_embeds = True)
+```
+
+Where `LOCAL_DIR_OF_SOC_CODING_INDEX` is the location of your locally saved version of the SOC coding index xlsx file, e.g. `data/soc2020volume2thecodingindexexcel22022024.xlsx`. If `save_embeds = True` then the embeddings will be saved in this same directory.
+
+If this file has different column names from what is outlined in `nlp_link/soc_mapper/config.yaml`, then you can edit them individually by running:
+
+```
+from nlp_link.soc_mapper.soc_map import SOCMapper
+
+soc_mapper = SOCMapper(soc_dir = LOCAL_DIR_OF_SOC_CODING_INDEX)
+soc_mapper.soc_mapper_config['sheet_name'] = 'Name of new sheet name'
+soc_mapper.load(save_embeds = True)
+
+```
+
 ## 📤 Output
 
 The output for one job title is in the format

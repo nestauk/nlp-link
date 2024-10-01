@@ -13,28 +13,35 @@ soc_mapper.get_soc(job_titles, return_soc_name=True)
 
 """
 
-from sentence_transformers import SentenceTransformer
-from collections import Counter, defaultdict
+from collections import Counter
 import os
 from typing import List, Union
 
 import pandas as pd
 from tqdm import tqdm
 import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
 
 from nlp_link.soc_mapper.soc_map_utils import (
     load_job_title_soc,
     process_job_title_soc,
     job_title_cleaner,
     unique_soc_job_titles,
-    unique_soc_descriptions,
+)
+from nlp_link.linker import NLPLinker
+
+from nlp_link.linker_utils import load_bert
+
+from utils.utils import (
+    soc_mapper_config,
+    load_s3_json,
+    load_local_json,
+    save_to_s3,
+    save_json_dict,
 )
 
-from nlp_link.linker_utils import chunk_list
+from wasabi import msg, Printer
 
-from utils.utils import PROJECT_DIR, soc_mapper_config, logger
-import logging
+msg_print = Printer()
 
 
 class SOCMapper(object):
@@ -47,10 +54,7 @@ class SOCMapper(object):
     ----------
 
     Args:
-        local (bool): Whether to read data from a local location or not, defaults to True
-        embeddings_output_dir (str, optional): The directory the embeddings are stored, or will be stored if saved.
-            You are unlikely to need to change this from "outputs/data/green_occupations/soc_matching/" unless the SOC data changes
-        batch_size (int): How many job titles per batch for embedding, defaults to 500
+        soc_dir (str): The directory of the SOC coding index xlsx file.
         match_top_n (int): The number of most similar SOC matches to consider when calculating the final SOC and outputing
         sim_threshold (float): The similarity threshold for outputting the most similar SOC match.
         top_n_sim_threshold (float): The similarity threshold for a match being added to a group of SOC matches.
@@ -63,10 +67,8 @@ class SOCMapper(object):
 
     load_process_soc_data():
         Load the SOC data
-    embed_texts(texts):
-            Get sentence embeddings for a list of input texts
-    load(save_embeds=False):
-            Load everything to use this class, calculate SOC embeddings if they weren't inputted, save embeddings if desired
+    load(reset_embeddings=False, save_embeds=False):
+            Load everything to use this class, recalculate SOC embeddings and save if desired
     find_most_similar_matches(job_titles, job_title_embeddings):
             Using the inputted job title embeddings and the SOC embeddings, find the full information about the most similar SOC job titles
     find_most_likely_soc(match_row):
@@ -86,11 +88,7 @@ class SOCMapper(object):
 
     def __init__(
         self,
-        local: bool = soc_mapper_config["soc_mapper"]["local"],
-        embeddings_output_dir: str = soc_mapper_config["soc_mapper"][
-            "embeddings_output_dir"
-        ],
-        batch_size: int = soc_mapper_config["soc_mapper"]["batch_size"],
+        soc_dir: str = soc_mapper_config["soc_data"]["soc_dir"],
         match_top_n: int = soc_mapper_config["soc_mapper"]["match_top_n"],
         sim_threshold: float = soc_mapper_config["soc_mapper"]["sim_threshold"],
         top_n_sim_threshold: float = soc_mapper_config["soc_mapper"][
@@ -99,14 +97,14 @@ class SOCMapper(object):
         minimum_n: int = soc_mapper_config["soc_mapper"]["minimum_n"],
         minimum_prop: float = soc_mapper_config["soc_mapper"]["minimum_prop"],
     ):
-        self.local = local
-        self.embeddings_output_dir = embeddings_output_dir
-        self.batch_size = batch_size
+        self.soc_dir = soc_dir
         self.match_top_n = match_top_n
         self.sim_threshold = sim_threshold
         self.top_n_sim_threshold = top_n_sim_threshold
         self.minimum_n = minimum_n
         self.minimum_prop = minimum_prop
+
+        self.soc_mapper_config = soc_mapper_config  # This is so a user could change the soc_data values easily if needed
 
     def load_process_soc_data(self):
         """
@@ -114,27 +112,28 @@ class SOCMapper(object):
         A small amount of processing.
         """
 
-        jobtitle_soc_data = process_job_title_soc(load_job_title_soc())
+        jobtitle_soc_data = process_job_title_soc(
+            load_job_title_soc(soc_mapper_config=self.soc_mapper_config),
+            soc_mapper_config=self.soc_mapper_config,
+        )
 
         return jobtitle_soc_data
 
-    def embed_texts(
+    def load(
         self,
-        texts: list,
-    ) -> np.array(object):
-        logger.info(f"Embedding texts in {len(texts)/self.batch_size} batches")
-        all_embeddings = []
-        for batch_texts in tqdm(chunk_list(texts, self.batch_size)):
-            all_embeddings.append(
-                self.bert_model.encode(np.array(batch_texts), batch_size=32)
-            )
-        all_embeddings = np.concatenate(all_embeddings)
+        reset_embeddings: bool = soc_mapper_config["soc_mapper"]["reset_embeddings"],
+        save_embeds: bool = False,
+    ):
+        """
+        Load the BERT model, SOC coding index data, and load or calculate embeddings for the job titles in this dataset.
+        Args:
+            reset_embeddings (bool): Whether to re-calculate and save soc coding index embeddings or not. Will be done anyway if
+                an embeddings file isn't found.
+            save_embeds (bool): Whether to save the out the embeddings or not (only used if the embeddings weren't loaded)
+        """
 
-        return all_embeddings
-
-    def load(self, save_embeds=False, job_titles=True):
-        self.bert_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
-        self.bert_model.max_seq_length = 512
+        self.nlp_link = NLPLinker()
+        self.nlp_link.bert_model = load_bert()
 
         self.jobtitle_soc_data = self.load_process_soc_data()
 
@@ -150,69 +149,109 @@ class SOCMapper(object):
                 self.jobtitle_soc_data["SOC 2020 UNIT GROUP DESCRIPTIONS"],
             )
         )
+        self.job_title_2_soc6_4 = unique_soc_job_titles(self.jobtitle_soc_data)
 
-        if job_titles:
-            self.job_title_2_soc6_4 = unique_soc_job_titles(self.jobtitle_soc_data)
+        embeddings_output_dir = os.path.dirname(self.soc_dir)
+
+        if "s3://" in embeddings_output_dir:
+            s3_bucket_name = embeddings_output_dir.split("s3://")[1].split("/")[0]
+            embeddings_output_s3_folder = "/".join(
+                embeddings_output_dir.split("s3://")[1].split("/")[1:]
+            )
+            embeddings_path = os.path.join(
+                embeddings_output_s3_folder, "soc_job_embeddings.json"
+            )
+            job_titles_path = os.path.join(
+                embeddings_output_s3_folder, "soc_job_embeddings_titles.json"
+            )
         else:
-            # This is a bit of an appended use case - so I've called the variable the same
-            # so it fits in with the rest of the pipeline
-            self.job_title_2_soc6_4 = unique_soc_descriptions(self.jobtitle_soc_data)
-
-        embeddings_path = os.path.join(
-            self.embeddings_output_dir, "soc_job_embeddings.json"
-        )
-        job_titles_path = os.path.join(
-            self.embeddings_output_dir, "soc_job_embeddings_titles.json"
-        )
+            s3_bucket_name = None
+            embeddings_path = os.path.join(
+                embeddings_output_dir, "soc_job_embeddings.json"
+            )
+            job_titles_path = os.path.join(
+                embeddings_output_dir, "soc_job_embeddings_titles.json"
+            )
 
         try:
-            logger.info(f"Loading SOC job title embeddings")
-            if self.local:
-                self.all_soc_embeddings = load_json_dict(
-                    os.path.join(PROJECT_DIR, embeddings_path)
-                )
-                self.soc_job_titles = load_json_dict(
-                    os.path.join(PROJECT_DIR, job_titles_path)
-                )
+            if not reset_embeddings:
+                try:
+                    if s3_bucket_name:
+                        with msg_print.loading(
+                            f"Loading SOC job title embeddings from S3 ..."
+                        ):
+                            self.all_soc_embeddings = load_s3_json(
+                                s3_bucket_name, embeddings_path
+                            )
+                            self.soc_job_titles = load_s3_json(
+                                s3_bucket_name, job_titles_path
+                            )
+                    else:
+                        with msg_print.loading(
+                            f"Loading SOC job title embeddings locally ..."
+                        ):
+                            self.all_soc_embeddings = load_local_json(embeddings_path)
+                            self.soc_job_titles = load_local_json(job_titles_path)
+                    msg.good("SOC job title embeddings loaded.")
+                except:
+                    msg.warn(f"SOC job title embeddings not found.")
+                    raise
             else:
-                self.all_soc_embeddings = load_s3_data(BUCKET_NAME, embeddings_path)
-                self.soc_job_titles = load_s3_data(BUCKET_NAME, job_titles_path)
+                raise
         except:
-            logger.info(
-                f"SOC job title embeddings not found locally or in S3 - embedding ..."
-            )
+            msg.info(f"Calculating SOC job title embeddings ...")
 
             # Embed the SOC job titles
             self.soc_job_titles = list(self.job_title_2_soc6_4.keys())
 
-            self.all_soc_embeddings = self.embed_texts(self.soc_job_titles)
+            self.all_soc_embeddings = self.nlp_link._get_embeddings(self.soc_job_titles)
 
             if save_embeds:
-                logger.info(f"Saving SOC job title embeddings")
-                save_to_s3(BUCKET_NAME, self.all_soc_embeddings, embeddings_path)
-                save_to_s3(BUCKET_NAME, self.soc_job_titles, job_titles_path)
+                msg.info(f"Saving SOC job title embeddings")
+                if s3_bucket_name:
+                    save_to_s3(s3_bucket_name, self.all_soc_embeddings, embeddings_path)
+                    save_to_s3(s3_bucket_name, self.soc_job_titles, job_titles_path)
+                    msg.good(f"Saved to s3://{s3_bucket_name} + {embeddings_path} ...")
+                else:
+                    save_json_dict(self.all_soc_embeddings, embeddings_path)
+                    save_json_dict(self.soc_job_titles, job_titles_path)
+                    msg.good(f"Saved to {embeddings_path} ...")
+            else:
+                msg.warn(
+                    f"Newly calculated SOC job title embeddings were not saved, set save_embeds=True if you'd like to save them to speed up future use."
+                )
 
     def find_most_similar_matches(
         self,
         job_titles: Union[str, List[str]],
         job_title_embeddings: np.array(object),
-    ) -> dict:
+    ) -> list:
         """
         Using the job title embeddings and the SOC job title embeddings,
         find the top n SOC job titles which are most similar to each input job title.
+
+        Args:
+            job_titles (str or list of strings): One or a list of inputted job titles.
+            job_title_embeddings (np.array()): The embeddings for the inputted job titles.
+
+        Outputs:
+            list: A list of the most similar SOC data for each inputted job title.
         """
 
-        logger.info(f"Finding most similar job titles for {len(job_titles)} job titles")
+        matches_topn_dict = self.nlp_link.get_matches(
+            input_data_ids=list(range(len(job_titles))),
+            input_embeddings=job_title_embeddings,
+            comparison_data_ids=list(range(len(self.all_soc_embeddings))),
+            comparison_embeddings=self.all_soc_embeddings,
+            top_n=self.match_top_n,
+        )
 
-        similarities = cosine_similarity(job_title_embeddings, self.all_soc_embeddings)
-
-        # Top matches for each data point
         job_top_soc_matches = []
-        for job_title_ix, job_title in tqdm(enumerate(job_titles)):
+        for k, v in matches_topn_dict.items():
             top_soc_matches = []
-            for soc_ix in np.flip(np.argsort(similarities[job_title_ix]))[
-                0 : self.match_top_n
-            ]:
+            for top_match in v:
+                soc_ix = top_match[0]
+                similarity = top_match[1]
                 soc_text = self.soc_job_titles[soc_ix]
                 top_soc_matches.append(
                     [
@@ -220,12 +259,12 @@ class SOCMapper(object):
                         self.job_title_2_soc6_4[soc_text][0],  # 6 digit
                         self.job_title_2_soc6_4[soc_text][1],  # 4 digit
                         self.job_title_2_soc6_4[soc_text][2],  # 2010 4 digit
-                        similarities[job_title_ix][soc_ix],
+                        similarity,
                     ]
                 )
             job_top_soc_matches.append(
                 {
-                    "job_title": job_title,
+                    "job_title": job_titles[k],
                     "top_soc_matches": top_soc_matches,
                 }
             )
@@ -246,6 +285,13 @@ class SOCMapper(object):
 
         Returns data in the format ((soc_2020_6, soc_2020_4, soc_2010), job_title) or None
         If pathway 1. (above) isn't true then the output will be ((None, soc_2020_4, None), job_title) and job_title will be a set of multiple
+
+        Args:
+            match_row: One element from the list outputted in find_most_similar_matches.
+            e.g. {"job_title": 'principal data scientist', "top_soc_matches": [["data scientist", 6digit SOC, 4 digit SOC, 4 digit 2010 SOC, similarity_score], ...]}
+
+        Output:
+            tuple, None: Details of the most likely SOC match for this job title.
         """
 
         top_soc_match = match_row["top_soc_matches"][0][0]
@@ -292,23 +338,20 @@ class SOCMapper(object):
         additional_info: bool = False,
         return_soc_name: bool = False,
         clean_job_title: bool = True,
-    ):
-        """Get the most likely SOC for each inputted job title
+    ) -> list:
+        """
+        Get the most likely SOC for each inputted job title
 
-                :param job_titles: A single job title or a list of raw job titles
-        :type job_titles: str, list of str
-
-                :param additional_info: Whether to provide additional information about the matches.
+        Args:
+            job_titles (str, list): A single job title or a list of raw job titles
+            additional_info (bool): Whether to provide additional information about the matches.
                         Return just the most likely soc match (False) or the top soc matches (True)
-        :type additional_info: bool
-                :param return_soc_name: Whether to output the SOC names of the most likely SOC (or just the codes).
+            return_soc_name (bool): Whether to output the SOC names of the most likely SOC (or just the codes).
                         When applied to lots of data this might not be as desirable.
-        :type return_soc_name: bool
-            :param clean_job_title: Whether to apply the cleaning function to the job title.
-        :type clean_job_title: bool
+            clean_job_title (bool): Whether to apply the cleaning function to the job title.
 
-        :return: A list of the top matches for each job title inputted
-        :rtype: list
+        Output:
+            list: A list of the top matches for each job title inputted
 
         """
 
@@ -320,13 +363,13 @@ class SOCMapper(object):
             job_titles = [job_title_cleaner(job_title) for job_title in job_titles]
 
         # Embed the input job titles
-        job_title_embeddings = self.embed_texts(job_titles)
+        job_title_embeddings = self.nlp_link._get_embeddings(job_titles)
 
         top_soc_matches = self.find_most_similar_matches(
             job_titles, job_title_embeddings
         )
 
-        logger.info(f"Finding most likely SOC")
+        msg.info(f"Finding most likely SOC")
         found_count = 0
         for job_matches in top_soc_matches:
             most_likely_soc = self.find_most_likely_soc(job_matches)
@@ -351,7 +394,7 @@ class SOCMapper(object):
             if most_likely_soc:
                 found_count += 1
 
-        logger.info(
+        msg.good(
             f"Found SOCs for {found_count*100/len(top_soc_matches)}% of the job titles"
         )
 

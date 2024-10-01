@@ -1,5 +1,5 @@
 soc_data:
-  soc_dir: "s3://prinz-green-jobs/inputs/data/occupation_data/ons/soc2020volume2thecodingindexexcel22022024.xlsx"
+  soc_dir: "s3://nesta-open-data/soc_mapper/soc_coding_index_soc2020_volume2_22022024/soc2020volume2thecodingindexexcel22022024.xlsx"
   sheet_name: "SOC2020 coding index"
   soc_2020_ext_col: "SOC 2020 ext"
   soc_2020_col: "SOC 2020"
@@ -10,9 +10,7 @@ soc_data:
   add_col: "ADD"
   ind_col: "IND"
 soc_mapper:
-  local: False
-  embeddings_output_dir: ""
-  batch_size: 500
+  reset_embeddings: False
   match_top_n: 10
   sim_threshold: 0.67
   top_n_sim_threshold: 0.5
