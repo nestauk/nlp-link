@@ -63,7 +63,7 @@ Docs for this repo are automatically published to gh-pages branch via. Github ac
 However, if you are editing the docs you can test them out locally by running
 
 ```
-cd guidelines
-pip install -r docs/requirements.txt
+cd docs
+<!-- pip install -r docs/requirements.txt -->
 mkdocs serve
 ```
