@@ -1,0 +1,18 @@
+soc_data:
+  soc_dir: "s3://nesta-open-data/soc_mapper/soc_coding_index_soc2020_volume2_22022024/soc2020volume2thecodingindexexcel22022024.xlsx"
+  sheet_name: "SOC2020 coding index"
+  soc_2020_ext_col: "SOC 2020 ext"
+  soc_2020_col: "SOC 2020"
+  soc_2010_col: "SOC 2010"
+  natural_order_col: "INDEXOCC - natural word order"
+  sug_col: "SOC 2020 ext SUG title"
+  ug_col: "SOC2020 unit group title"
+  add_col: "ADD"
+  ind_col: "IND"
+soc_mapper:
+  reset_embeddings: False
+  match_top_n: 10
+  sim_threshold: 0.67
+  top_n_sim_threshold: 0.5
+  minimum_n: 3
+  minimum_prop: 0.5

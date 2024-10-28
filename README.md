@@ -24,6 +24,30 @@ poetry install
 
 ```
 
+## Usage
+
+```
+from nlp_link.linker import NLPLinker
+
+nlp_link = NLPLinker()
+
+# dict inputs
+comparison_data = {'a': 'cats', 'b': 'dogs', 'd': 'rats', 'e': 'birds'}
+input_data = {'x': 'owls', 'y': 'feline', 'z': 'doggies', 'za': 'dogs', 'zb': 'chair'}
+nlp_link.load(comparison_data)
+matches = nlp_link.link_dataset(input_data)
+# Top match output
+print(matches)
+
+# list inputs
+comparison_data = ['cats', 'dogs', 'rats', 'birds']
+input_data = ['owls', 'feline', 'doggies', 'dogs','chair']
+nlp_link.load(comparison_data)
+matches = nlp_link.link_dataset(input_data)
+# Top match output
+print(matches)
+```
+
 ## Tests
 
 To run tests:
@@ -39,7 +63,7 @@ Docs for this repo are automatically published to gh-pages branch via. Github ac
 However, if you are editing the docs you can test them out locally by running
 
 ```
-cd guidelines
-pip install -r docs/requirements.txt
+cd docs
+<!-- pip install -r docs/requirements.txt -->
 mkdocs serve
 ```

@@ -39,6 +39,6 @@ theme:
         name: Switch to light mode
 nav:
   - Home: README.md
-  - Page 1: page1.md
+  - SOCMapper: page1.md
 plugins:
   - same-dir
