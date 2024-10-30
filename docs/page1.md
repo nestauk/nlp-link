@@ -24,4 +24,4 @@ Which will output
 
 ## 📖 Read more
 
-Read more about the methods and evaluation of the SOCMapper [here](https://github.com/nestauk/nlp-link/soc_mapper/README.md).
+Read more about the methods and evaluation of the SOCMapper [here](https://github.com/nestauk/nlp-link/blob/main/nlp_link/soc_mapper/README.md).
