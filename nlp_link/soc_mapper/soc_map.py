@@ -21,6 +21,8 @@ import pandas as pd
 from tqdm import tqdm
 import numpy as np
 
+from nlp_link import soc_mapper_config
+
 from nlp_link.soc_mapper.soc_map_utils import (
     load_job_title_soc,
     process_job_title_soc,
@@ -31,8 +33,7 @@ from nlp_link.linker import NLPLinker
 
 from nlp_link.linker_utils import load_bert
 
-from utils.utils import (
-    soc_mapper_config,
+from nlp_link.utils.utils import (
     load_s3_json,
     load_local_json,
     save_to_s3,
