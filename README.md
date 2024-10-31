@@ -4,7 +4,7 @@ NLP Link finds the most similar word (or words) in a reference list to an inputt
 
 # 🗺️ SOC Mapper
 
-Another functionality of this package is using the linking methodology to find the [Standard Occupation Classification (SOC)](https://www.ons.gov.uk/methodology/classificationsandstandards/standardoccupationalclassificationsoc) code most similar to an inputted job title. More on this [here](./page1.md).
+Another functionality of this package is using the linking methodology to find the [Standard Occupation Classification (SOC)](https://www.ons.gov.uk/methodology/classificationsandstandards/standardoccupationalclassificationsoc) code most similar to an inputted job title. More on this [here](https://github.com/nestauk/nlp-link/blob/main/docs/page1.md).
 
 ## 🔨 Usage
 
