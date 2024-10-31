@@ -2,7 +2,7 @@ import pandas as pd
 
 import re
 
-from utils.utils import soc_mapper_config
+from nlp_link import soc_mapper_config
 
 
 def load_job_title_soc(soc_mapper_config: dict = soc_mapper_config) -> pd.DataFrame():
