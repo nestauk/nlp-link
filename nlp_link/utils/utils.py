@@ -3,6 +3,9 @@ import json
 from fnmatch import fnmatch
 from decimal import Decimal
 import numpy
+import requests
+from io import BytesIO
+import pandas as pd
 
 from nlp_link import logger
 
@@ -91,3 +94,22 @@ def save_json_dict(dictionary: dict, file_name: str):
         logger.info(f"Saved to {file_name} ...")
     else:
         logger.error(f'{file_name} has wrong file extension! Only supports "*.json"')
+
+
+def get_df_from_excel_s3_path(bucket_name: str, key: str, **kwargs) -> pd.DataFrame:
+    """
+    Get dataframe from Excel file stored in s3 path.
+
+    Args
+        path (str): S3 URI to Excel file
+        **kwargs for pl.read_excel()
+    Returns
+        pd.DataFrame: dataframe from Excel file
+    """
+
+    s3 = boto3.client("s3")
+    s3_data = s3.get_object(Bucket=bucket_name, Key=key)
+    contents = s3_data["Body"].read()  # your Excel's essence, pretty much a stream
+
+    df = pd.read_excel(BytesIO(contents), **kwargs)
+    return df

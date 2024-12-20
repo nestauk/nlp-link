@@ -1,10 +1,12 @@
 from tqdm import tqdm
-
 import numpy as np
 from sentence_transformers import SentenceTransformer
 import torch
-
 from wasabi import msg, Printer
+
+import os
+
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 msg_print = Printer()
 

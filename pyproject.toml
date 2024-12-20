@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "nlp-link"
-version = "0.1.3"
+version = "0.1.4"
 description = "A python package to semantically link two lists of texts."
 authors = ["Nesta <dataanalytics@nesta.org.uk>"]
 readme = "README.md"
@@ -17,9 +17,8 @@ tqdm = "^4.66.4"
 numpy = "^1.26.4"
 openpyxl = "^3.1.3"
 wasabi = "^1.1.3"
-s3fs = {extras = ["boto3"], version = ">=2023.12.0"}
-boto3 = "*"
-botocore = "*"
+boto3 = "^1.34.99"
+botocore = "^1.34.99"
 
 [build-system]
 requires = ["poetry-core"]

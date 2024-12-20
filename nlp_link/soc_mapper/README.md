@@ -2,9 +2,9 @@
 
 Key files and folders in this directory are:
 
-1. [soc_map.py](https://github.com/nestauk/nlp-link/soc_mapper/soc_map.py): The script containing the `SOCMapper` class.
-2. [soc_map_utils.py](https://github.com/nestauk/nlp-link/soc_mapper/soc_map_utils.py): Functions for loading data and cleaning job titles for the `SOCMapper` class.
-3. [config.yaml](ttps://github.com/nestauk/nlp-link/soc_mapper/config.yaml): The default arguments for the `SOCMapper` class.
+1. [soc_map.py](https://github.com/nestauk/nlp-link/blob/main/nlp_link/soc_mapper/soc_map.py): The script containing the `SOCMapper` class.
+2. [soc_map_utils.py](https://github.com/nestauk/nlp-link/blob/main/nlp_link/soc_mapper/soc_map_utils.py): Functions for loading data and cleaning job titles for the `SOCMapper` class.
+3. [config.yaml](https://github.com/nestauk/nlp-link/blob/main/nlp_link/soc_mapper/config.yaml): The default arguments for the `SOCMapper` class.
 
 # 🗺️ SOC Mapper
 
@@ -48,6 +48,8 @@ soc_mapper.load(save_embeds = True)
 
 ```
 
+<a name="soc_output"></a>
+
 ## 📤 Output
 
 The output for one job title is in the format
@@ -59,8 +61,7 @@ The output for one job title is in the format
 for example
 
 ```
-((('2422/02', 'Financial advisors and planners'), ('2422', 'Fi
-nance and investment analysts and advisers'), '3534'), 'financial consultant')
+((('2422/02', 'Financial advisors and planners'), ('2422', 'Finance and investment analysts and advisers'), '3534'), 'financial consultant')
 ```
 
 If the names of the SOC codes aren't needed then you can set `return_soc_name=False`. The variables `soc_mapper.soc_2020_6_dict` and `soc_mapper.soc_2020_4_dict` give the names of each SOC 2020 6 and 4 digit codes.

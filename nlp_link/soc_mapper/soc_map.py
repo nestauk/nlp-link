@@ -242,8 +242,8 @@ class SOCMapper(object):
         matches_topn_dict = self.nlp_link.get_matches(
             input_data_ids=list(range(len(job_titles))),
             input_embeddings=job_title_embeddings,
-            comparison_data_ids=list(range(len(self.all_soc_embeddings))),
-            comparison_embeddings=self.all_soc_embeddings,
+            reference_data_ids=list(range(len(self.all_soc_embeddings))),
+            reference_embeddings=self.all_soc_embeddings,
             top_n=self.match_top_n,
         )
 

@@ -39,6 +39,7 @@ theme:
         name: Switch to light mode
 nav:
   - Home: README.md
-  - SOCMapper: page1.md
+  - SOCMapper - Core Usage: page1.md
+  - SOCMapper - Modifications, Methodology and Evaluation: https://github.com/nestauk/nlp-link/blob/main/nlp_link/soc_mapper/README.md
 plugins:
   - same-dir
