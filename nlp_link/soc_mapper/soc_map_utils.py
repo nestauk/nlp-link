@@ -1,9 +1,10 @@
 import pandas as pd
 
 import re
+import os
 
 from nlp_link import soc_mapper_config
-from nlp_link.utils.utils import get_df_from_excel_url
+from nlp_link.utils.utils import get_df_from_excel_s3_path
 
 
 def load_job_title_soc(soc_mapper_config: dict = soc_mapper_config) -> pd.DataFrame():
@@ -11,8 +12,15 @@ def load_job_title_soc(soc_mapper_config: dict = soc_mapper_config) -> pd.DataFr
     Load the ONS dataset which gives SOC codes for thousands of job titles
     """
 
-    jobtitle_soc_data = get_df_from_excel_url(
-        soc_mapper_config["soc_data"]["soc_dir"],
+    soc_dir = soc_mapper_config["soc_data"]["soc_dir"]
+    dir_split = soc_dir.split("s3://")[1].split("/")
+
+    s3_bucket_name = dir_split[0]
+    s3_key = os.path.join("", *dir_split[1:])
+
+    jobtitle_soc_data = get_df_from_excel_s3_path(
+        bucket_name=s3_bucket_name,
+        key=s3_key,
         sheet_name=soc_mapper_config["soc_data"]["sheet_name"],
         converters={
             soc_mapper_config["soc_data"]["soc_2020_ext_col"]: str,

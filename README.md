@@ -16,6 +16,8 @@ pip install nlp-link
 
 ### Basic usage
 
+Note: the first time you import `NLPLinker` it will take some time to load.
+
 Match two lists in python:
 
 ```python

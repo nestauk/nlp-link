@@ -96,32 +96,20 @@ def save_json_dict(dictionary: dict, file_name: str):
         logger.error(f'{file_name} has wrong file extension! Only supports "*.json"')
 
 
-def get_content_from_url(url: str) -> BytesIO:
+def get_df_from_excel_s3_path(bucket_name: str, key: str, **kwargs) -> pd.DataFrame:
     """
-    Get BytesIO stream from URL.
-    Args
-        url (str): URL
-    Returns
-        io.BytesIO: content of URL as BytesIO stream
-    """
-    with requests.Session() as session:
-        res = session.get(url)
-    content = BytesIO(res.content)
-    return content
-
-
-def get_df_from_excel_url(url: str, **kwargs) -> pd.DataFrame:
-    """
-    Get dataframe from Excel file stored at URL.
+    Get dataframe from Excel file stored in s3 path.
 
     Args
-        url (str): URL location of Excel file download
+        path (str): S3 URI to Excel file
         **kwargs for pl.read_excel()
-
     Returns
         pd.DataFrame: dataframe from Excel file
     """
-    content = get_content_from_url(url)
-    df = pd.read_excel(content, **kwargs)
 
+    s3 = boto3.client("s3")
+    s3_data = s3.get_object(Bucket=bucket_name, Key=key)
+    contents = s3_data["Body"].read()  # your Excel's essence, pretty much a stream
+
+    df = pd.read_excel(BytesIO(contents), **kwargs)
     return df
