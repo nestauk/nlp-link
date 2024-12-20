@@ -3,6 +3,9 @@ import json
 from fnmatch import fnmatch
 from decimal import Decimal
 import numpy
+import requests
+from io import BytesIO
+import pandas as pd
 
 from nlp_link import logger
 
@@ -91,3 +94,34 @@ def save_json_dict(dictionary: dict, file_name: str):
         logger.info(f"Saved to {file_name} ...")
     else:
         logger.error(f'{file_name} has wrong file extension! Only supports "*.json"')
+
+
+def get_content_from_url(url: str) -> BytesIO:
+    """
+    Get BytesIO stream from URL.
+    Args
+        url (str): URL
+    Returns
+        io.BytesIO: content of URL as BytesIO stream
+    """
+    with requests.Session() as session:
+        res = session.get(url)
+    content = BytesIO(res.content)
+    return content
+
+
+def get_df_from_excel_url(url: str, **kwargs) -> pd.DataFrame:
+    """
+    Get dataframe from Excel file stored at URL.
+
+    Args
+        url (str): URL location of Excel file download
+        **kwargs for pl.read_excel()
+
+    Returns
+        pd.DataFrame: dataframe from Excel file
+    """
+    content = get_content_from_url(url)
+    df = pd.read_excel(content, **kwargs)
+
+    return df

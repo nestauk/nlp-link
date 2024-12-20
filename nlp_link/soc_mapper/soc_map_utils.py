@@ -3,6 +3,7 @@ import pandas as pd
 import re
 
 from nlp_link import soc_mapper_config
+from nlp_link.utils.utils import get_df_from_excel_url
 
 
 def load_job_title_soc(soc_mapper_config: dict = soc_mapper_config) -> pd.DataFrame():
@@ -10,7 +11,7 @@ def load_job_title_soc(soc_mapper_config: dict = soc_mapper_config) -> pd.DataFr
     Load the ONS dataset which gives SOC codes for thousands of job titles
     """
 
-    jobtitle_soc_data = pd.read_excel(
+    jobtitle_soc_data = get_df_from_excel_url(
         soc_mapper_config["soc_data"]["soc_dir"],
         sheet_name=soc_mapper_config["soc_data"]["sheet_name"],
         converters={
@@ -81,15 +82,15 @@ def unique_soc_job_titles(jobtitle_soc_data: pd.DataFrame()) -> dict:
         ),
         axis=1,
     )
-    jobtitle_soc_data[f"{col_name_0} and {col_name_1} and {col_name_2}"] = (
-        jobtitle_soc_data.apply(
-            lambda x: (
-                x[f"{col_name_0} and {col_name_1}"] + " " + x[col_name_2]
-                if pd.notnull(x[col_name_2])
-                else x[f"{col_name_0} and {col_name_1}"]
-            ),
-            axis=1,
-        )
+    jobtitle_soc_data[
+        f"{col_name_0} and {col_name_1} and {col_name_2}"
+    ] = jobtitle_soc_data.apply(
+        lambda x: (
+            x[f"{col_name_0} and {col_name_1}"] + " " + x[col_name_2]
+            if pd.notnull(x[col_name_2])
+            else x[f"{col_name_0} and {col_name_1}"]
+        ),
+        axis=1,
     )
 
     # Try to find a unique job title to SOC 2020 4 or 6 code mapping
