@@ -8,17 +8,17 @@ from nlp_link.linker import NLPLinker
 nlp_link = NLPLinker()
 
 # dict inputs
-comparison_data = {'a': 'cats', 'b': 'dogs', 'd': 'rats', 'e': 'birds'}
+reference_data = {'a': 'cats', 'b': 'dogs', 'd': 'rats', 'e': 'birds'}
 input_data = {'x': 'owls', 'y': 'feline', 'z': 'doggies', 'za': 'dogs', 'zb': 'chair'}
-nlp_link.load(comparison_data)
+nlp_link.load(reference_data)
 matches = nlp_link.link_dataset(input_data)
 # Top match output
 print(matches)
 
 # list inputs
-comparison_data = ['cats', 'dogs', 'rats', 'birds']
+reference_data = ['cats', 'dogs', 'rats', 'birds']
 input_data = ['owls', 'feline', 'doggies', 'dogs','chair']
-nlp_link.load(comparison_data)
+nlp_link.load(reference_data)
 matches = nlp_link.link_dataset(input_data)
 # Top match output
 print(matches)
@@ -90,22 +90,22 @@ class NLPLinker(object):
 
     def load(
         self,
-        comparison_data: Union[list, dict],
+        reference_data: Union[list, dict],
     ):
         """
-        Load the embedding model and embed the comparison dataset
+        Load the embedding model and embed the reference dataset
         Args:
-            comparison_data (Union[list, dict]): The comparison texts to find links to.
+            reference_data (Union[list, dict]): The reference texts to find links to.
                 A list of texts or a dictionary of texts where the key is the unique id.
                 If a list is given then a unique id will be assigned with the index order.
         """
         self.bert_model = load_bert()
 
-        self.comparison_data = self._process_dataset(comparison_data)
-        self.comparison_data_texts = list(self.comparison_data.values())
-        self.comparison_data_ids = list(self.comparison_data.keys())
+        self.reference_data = self._process_dataset(reference_data)
+        self.reference_data_texts = list(self.reference_data.values())
+        self.reference_data_ids = list(self.reference_data.keys())
 
-        self.comparison_embeddings = self._get_embeddings(self.comparison_data_texts)
+        self.reference_embeddings = self._get_embeddings(self.reference_data_texts)
 
     def _get_embeddings(self, text_list: list) -> np.array:
         """
@@ -128,8 +128,8 @@ class NLPLinker(object):
         self,
         input_data_ids: list,
         input_embeddings: np.array,
-        comparison_data_ids: list,
-        comparison_embeddings: np.array,
+        reference_data_ids: list,
+        reference_embeddings: np.array,
         top_n: int,
         drop_most_similar: bool = False,
     ) -> dict:
@@ -139,8 +139,8 @@ class NLPLinker(object):
         Args:
             input_data_ids (list): The ids of the input texts.
             input_embeddings (np.array): Embeddings for the input texts.
-            comparison_data_ids (list): The ids of the comparison texts.
-            comparison_embeddings (np.array): Embeddings for the comparison texts.
+            reference_data_ids (list): The ids of the reference texts.
+            reference_embeddings (np.array): Embeddings for the reference texts.
             top_n (int): The number of top links to return in the output.
             drop_most_similar (bool, default = False): Whether to not output the most similar match, this would be set to True if you are matching a list with itself.
 
@@ -158,7 +158,7 @@ class NLPLinker(object):
         else:
             start_n = 0
 
-        # We chunk up comparisons otherwise it can crash
+        # We chunk up reference list otherwise it can crash
         matches_topn = {}
         for batch_indices in tqdm(
             chunk_list(range(len(input_data_ids)), n_chunks=self.match_chunk_size)
@@ -167,18 +167,18 @@ class NLPLinker(object):
             batch_input_embeddings = [input_embeddings[i] for i in batch_indices]
 
             batch_similarities = cosine_similarity(
-                batch_input_embeddings, comparison_embeddings
+                batch_input_embeddings, reference_embeddings
             )
 
             # Top links for each input text
             for input_ix, similarities in enumerate(batch_similarities):
                 top_links = []
-                for comparison_ix in np.flip(np.argsort(similarities))[start_n:top_n]:
-                    # comparison data id + cosine similarity score
+                for reference_ix in np.flip(np.argsort(similarities))[start_n:top_n]:
+                    # reference data id + cosine similarity score
                     top_links.append(
                         [
-                            comparison_data_ids[comparison_ix],
-                            similarities[comparison_ix],
+                            reference_data_ids[reference_ix],
+                            similarities[reference_ix],
                         ]
                     )
                 matches_topn[batch_input_ids[input_ix]] = top_links
@@ -192,10 +192,10 @@ class NLPLinker(object):
         drop_most_similar: bool = False,
     ) -> dict:
         """
-        Link a dataset to the comparison dataset.
+        Link a dataset to the reference dataset.
 
         Args:
-            input_data (Union[list, dict]): The main dictionary to be linked to texts in the loaded comparison_data.
+            input_data (Union[list, dict]): The main dictionary to be linked to texts in the loaded reference_data.
                 A list of texts or a dictionary of texts where the key is the unique id.
                 If a list is given then a unique id will be assigned with the index order.
             top_n (int, default = 3): The number of top links to return in the output.
@@ -204,17 +204,17 @@ class NLPLinker(object):
             drop_most_similar (bool, default = False): Whether to not output the most similar match, this would be set to True if you are matching a list with itself.
         Returns:
             dict: The keys are the ids of the input_data and the values are a list of lists of the top_n most similar
-                ids from the comparison_data and a probability score.
+                ids from the reference_data and a probability score.
                 e.g. {'x': [['a', 0.75], ['c', 0.7]], 'y': [...]}
         """
 
         try:
             msg.info(
-                f"Comparing {len(input_data)} input texts to {len(self.comparison_embeddings)} comparison texts"
+                f"Comparing {len(input_data)} input texts to {len(self.reference_embeddings)} reference texts"
             )
         except:
             msg.warning(
-                "self.comparison_embeddings does not exist - you may have not run load()"
+                "self.reference_embeddings does not exist - you may have not run load()"
             )
 
         input_data = self._process_dataset(input_data)
@@ -226,8 +226,8 @@ class NLPLinker(object):
         self.matches_topn = self.get_matches(
             input_data_ids,
             input_embeddings,
-            self.comparison_data_ids,
-            self.comparison_embeddings,
+            self.reference_data_ids,
+            self.reference_embeddings,
             top_n,
             drop_most_similar,
         )
@@ -239,8 +239,8 @@ class NLPLinker(object):
                     {
                         "input_id": input_id,
                         "input_text": input_data[input_id],
-                        "link_id": link_data[0][0],
-                        "link_text": self.comparison_data[link_data[0][0]],
+                        "reference_id": link_data[0][0],
+                        "reference_text": self.reference_data[link_data[0][0]],
                         "similarity": link_data[0][1],
                     }
                     for input_id, link_data in self.matches_topn.items()

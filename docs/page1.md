@@ -22,6 +22,10 @@ Which will output
 [((('2433/04', 'Statistical data scientists'), ('2433', 'Actuaries, economists and statisticians'), '2425'), 'Data scientist'), ((('6131/99', 'Nursing auxiliaries and assistants n.e.c.'), ('6131', 'Nursing auxiliaries and assistants'), '6141'), 'Assistant nurse'), ((('2422/02', 'Financial advisers and planners'), ('2422', 'Finance and investment analysts and advisers'), '3534'), 'Financial consultant')]
 ```
 
+This nested list gives information about the most similar SOC codes for each of the three inputted job titles. The most similar extended SOC for "data scientist" was 'Statistical data scientists - 2433/04'.
+
+More about this output format is explained in the [SOCMapper page](https://github.com/nestauk/nlp-link/blob/main/nlp_link/soc_mapper/README.md#soc_output).
+
 ## 📖 Read more
 
 Read more about the methods and evaluation of the SOCMapper [here](https://github.com/nestauk/nlp-link/blob/main/nlp_link/soc_mapper/README.md).
