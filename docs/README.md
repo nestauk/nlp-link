@@ -82,7 +82,7 @@ Which outputs:
 
 ```
 
-Output several most similar matches using the `top_n` argument (`format_output` needs to be set to False for this):
+Output the top n most similar reference word matches using the `top_n` argument (`format_output` needs to be set to False for this):
 
 ```python
 
