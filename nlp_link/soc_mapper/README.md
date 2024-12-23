@@ -138,6 +138,45 @@ With the default values, the final matches for each inputted job title would be:
 
 However, if we had set slightly different conditions for the consensus approach, another outcome could be that the "Data visualisation developer" job title was mapped to the SOC "2134 - Programmers and software professionals" since 2 out of the 4 matches with over 0.45 similarity were from this 4-digit SOC.
 
+## ⚖️ ONS comparison
+
+On the 5th November 2024 the ONS released a dataset of the ten most common job titles assigned to each 4-digit occupation (SOC 2020) - a total of 4131 job titles. This can be found on the ONS website [here](https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/employmentandemployeetypes/datasets/qualitymetricsforlabourdemandvolumesbystandardoccupationclassificationsoc2020).
+
+We used this to compare the results of the SOCMapper to.
+
+We used the `soc2020volume2thecodingindexexcel16102024` version of the SOC coding index for this exercise as we assumed this would be the version the ONS would have used.
+
+The comparison results showed:
+
+- 2706 (65.5%) of the SOC mappings are the same across ONS and Nesta methodologies with a 4 digit code.
+- 2969 (71.9%) of the SOC mappings are the same across ONS and Nesta methodologies with a 2 digit code.
+- The ONS don't find a match for 10 of the job titles.
+- Nesta's SOCMapper uses a default cosine similarity threshold of 0.67 to say whether the job title has been matched or not - when using this Nesta don't find a match for 385 of the job titles - Although 62 of these had the same 4 digit SOC as the ONS gave it, and 111 had the same 2 digit code as the ONS found.
+
+On inspection of some of the times the SOC were assigned differently, there is a mix of times when Nesta's algorithm performs better, or the ONS's, or they are both similarly good or bad. Some examples are below:
+
+| Online advert standardised job title              | ONS - SOC name                                | ONS - Matched job title               | Nesta - SOC name                                              | Nesta - Matched job title | Who was better?        |
+| ------------------------------------------------- | --------------------------------------------- | ------------------------------------- | ------------------------------------------------------------- | ------------------------- | ---------------------- |
+| Principal                                         | Education managers                            | vice principal                        | Business, research and administrative professionals n.e.c.    | Principal government      | ONS                    |
+| Engineer                                          | Engineering technicians                       | engineer                              | Metal working production and maintenance fitters              | Mechanical engineer       | ONS                    |
+| Packers                                           | Packers, bottlers, canners and fillers        | packer                                | Barristers and judges                                         | KC                        | ONS                    |
+| ST3/SPR, General Medicine - Medicine              | Generalist medical practitioners              | reader medicine                       | Complementary health associate professionals                  | Homoeopathic practitioner | ONS                    |
+| Part Time Cleaner                                 | Cleaners and domestics                        | cleaner                               | Industrial cleaning process occupations                       | Machine cleaner           | ONS                    |
+| GP                                                | Unknown                                       | No match                              | Generalist medical practitioners                              | GP                        | Nesta                  |
+| Oracle DBA                                        | Plastics process operatives                   | spectacle maker                       | Database administrators and web content technicians           | DBA                       | Nesta                  |
+| SENDCo                                            | Interior designers                            | dcor designer                         | Special and additional needs education teaching professionals | SENDco                    | Nesta                  |
+| Art Teacher                                       | Dancers and choreographers                    | ballet teacher                        | Secondary education teaching professionals                    | Art teacher               | Nesta                  |
+| Supervisor - Costa Coffee - Royal Sussex Hospital | Hospital porters                              | portering supervisor hospital service | Bar and catering supervisors                                  | Coffee shop supervisor    | Nesta                  |
+| Relief Driver                                     | Pre-press technicians                         | relief engraver                       | Rail transport operatives                                     | Relief signalman          | Both the same standard |
+| Practitioner                                      | Dental practitioners                          | dental practitioner                   | Generalist medical practitioners                              | Medical practitioner      | Both the same standard |
+| Fines Officer(AO) - Band E                        | Aircraft pilots and air traffic controllers   | airlines officer                      | Public services associate professionals                       | Band e                    | Both the same standard |
+| Branch Timing                                     | School midday and crossing patrol occupations | lunch time supervisor                 | Electrical engineers                                          | Branch engineer           | Both the same standard |
+| Lounge Host                                       | Air travel assistants                         | ground hostess                        | Housekeepers and related occupations                          | Chalet host               | Both the same standard |
+
+The 'matched job title' is the standardised job title matched to from SOC coding index.
+
+> ⚠️ **NOTE:** : These examples aren't a random sample, so don't represent overall trends in the differences in the two algorithms.
+
 ## 🤔 Evaluation
 
 To get the evaluation sample we found the most common job titles in Nesta's job advert dataset, and a random sample of job titles.
